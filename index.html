@@ -12,7 +12,8 @@
             height: 100%;
             overflow: hidden;
             font-family: Arial, sans-serif;
-            background-color: #FCCD64;
+            /*background-color: #FCCD64;*/
+            background-color: #fff;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -37,6 +38,9 @@
             top: 0;
             left: 0;
             z-index: 2;
+            image-rendering: -webkit-optimize-contrast; /* For WebKit browsers */
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
         }
 
         h1 {
@@ -60,102 +64,77 @@
     <p>We are currently updating our website to serve you better. We apologize for the inconvenience.</p>
     <p class="notice">Please check back later.</p>
 </div>
-<canvas></canvas>
+<canvas id="parallaxCanvas"></canvas>
 <script>
-    const pixelRatio = window.devicePixelRatio || 1;
-    const canvas = document.querySelector('canvas');
-    const canvasWidth = window.innerWidth;
-    const canvasHeight = window.innerHeight;
-
-    canvas.width = canvasWidth * pixelRatio;
-    canvas.height = canvasHeight * pixelRatio;
-    canvas.getContext('2d').scale(pixelRatio, pixelRatio);
-    canvas.style.width = canvasWidth + 'px';
-    canvas.style.height = canvasHeight + 'px';
+    const canvas = document.getElementById('parallaxCanvas');
     const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-    let width = window.innerWidth;
-    let height = window.innerHeight;
-    const particles = [];
+    let layers = [[], [], [], []]; // Four layers for particles
+    const emojis = ['⚙️', '🗜️️', '🔩', '🔧']; // Different emoji for each layer
 
-    let mouse = { x: width / 2, y: height / 2 };
-
-    const emojis = ['⚙️', '🗜️️', '🔩', '🧱', '🔧'];
-
-    const centerX = width / 2;
-    const centerY = height / 2;
-
-    function Particle() {
-        const maxRadius = Math.min(width, height) / 2;
-
-        const radius = Math.sqrt(Math.random()) * maxRadius;
-
-        const angle = Math.random() * 2 * Math.PI;
-
-        this.originalX = centerX + radius * Math.cos(angle);
-        this.originalY = centerY + radius * Math.sin(angle);
+    // Particle constructor
+    function Particle(layer) {
+        this.originalX = Math.random() * canvas.width;
+        this.originalY = Math.random() * canvas.height;
         this.x = this.originalX;
         this.y = this.originalY;
-        this.emoji = emojis[Math.floor(Math.random() * emojis.length)];
-        this.size = Math.random() * 24 + 1000 / 25;
-        this.rotation = Math.random() * 2 * Math.PI;
-        this.blur = Math.max(0, 30 - this.size / 2);
-
-        this.draw = function() {
-            ctx.save();
-            ctx.translate(this.x, this.y);
-            ctx.rotate(this.rotation);
-            ctx.font = `${this.size}px Arial`;
-            ctx.filter = `blur(${this.blur}px)`;
-            ctx.fillText(this.emoji, -this.size / 4, this.size / 4);
-            ctx.restore();
-        };
-
-        this.update = function() {
-            const weight = this.size / 10;
-            let dx = weight * ((mouse.x - width / 2) / 50);
-            let dy = weight * ((mouse.y - height / 2) / 50);
-
-            this.x = this.originalX + dx;
-            this.y = this.originalY + dy;
-        };
+        this.size = Math.random() * (layer + 1) * 15 + 10; // Size variation based on layer
+        this.blur = Math.max(0, 1 - layer / 5);
+        this.emoji = emojis[layer];
+        this.rotation = Math.random() * Math.PI * 2; // Random rotation
     }
 
-    function init() {
-        for(let i = 0; i < 25; i++) {
-            particles.push(new Particle());
+    // Initialize particles
+    for (let layer = 0; layer < layers.length; layer++) {
+        for (let i = 0; i < 25; i++) { // 50 particles per layer
+            layers[layer].push(new Particle(layer));
         }
     }
 
-    function animate() {
-        ctx.clearRect(0, 0, width, height);
-
-        particles.sort((a, b) => a.size - b.size);
-
-        particles.forEach(particle => {
-            particle.update();
-            particle.draw();
+    // Draw function
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        layers.forEach(layer => {
+            layer.forEach(particle => {
+                ctx.save();
+                ctx.translate(particle.x, particle.y); // Move to the particle's position
+                ctx.rotate(particle.rotation); // Apply rotation
+                ctx.filter = `blur(${particle.blur}px)`;
+                ctx.textBaseline = 'middle';
+                ctx.font = `${particle.size}px Arial`; // Set font size based on particle size
+                ctx.fillText(particle.emoji, -particle.size / 2, particle.size / 2); // Draw the emoji centered
+                ctx.restore();
+            });
         });
-        requestAnimationFrame(animate);
     }
 
-    window.addEventListener('resize', function() {
-        width = canvas.width = window.innerWidth;
-        height = canvas.height = window.innerHeight;
-        mouse.x = width / 2;
-        mouse.y = height / 2;
+    // Parallax effect based on mouse move
+    document.addEventListener('mousemove', (event) => {
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
 
-        particles.length = 0;
-        init();
+        // Normalize mouse position to -1 to 1
+        const deltaX = (event.clientX - centerX) / centerX;
+        const deltaY = (event.clientY - centerY) / centerY;
+
+        layers.forEach((layer, index) => {
+            // Inverse the index for the movement factor so that the top layer moves the most
+            const movementFactor = (index + 1) * 5; // Adjust this factor to control sensitivity
+
+            layer.forEach(particle => {
+                // Calculate positions based on original positions plus mouse-induced movement
+                particle.x = particle.originalX + deltaX * movementFactor;
+                particle.y = particle.originalY + deltaY * movementFactor;
+            });
+        });
+
+        draw(); // Redraw with the updated positions
     });
 
-    window.addEventListener('mousemove', function(event) {
-        mouse.x = event.clientX;
-        mouse.y = event.clientY;
-    });
-
-    init();
-    animate();
+    // Initial draw
+    draw();
 
 </script>
 </body>
