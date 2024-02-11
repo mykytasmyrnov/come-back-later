@@ -68,72 +68,69 @@
 <script>
     const canvas = document.getElementById('parallaxCanvas');
     const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const width = canvas.width = window.innerWidth;
+    const height = canvas.height = window.innerHeight;
 
-    let layers = [[], [], [], []]; // Four layers for particles
-    const emojis = ['⚙️', '🗜️️', '🔩', '🔧']; // Different emoji for each layer
+    let layers = [[], [], []];
+    const emojis = ['⚙️', '🗜️️', '🔩', '🔧'];
+    const centerX = width / 2;
+    const centerY = height / 2;
 
-    // Particle constructor
     function Particle(layer) {
-        this.originalX = Math.random() * canvas.width;
-        this.originalY = Math.random() * canvas.height;
+        const maxRadius = Math.min(width, height) / 2;
+        const radius = Math.sqrt(Math.random()) * maxRadius;
+        const angle = Math.random() * 2 * Math.PI;
+        this.originalX = centerX + radius * Math.cos(angle);
+        this.originalY = centerY + radius * Math.sin(angle);
         this.x = this.originalX;
         this.y = this.originalY;
-        this.size = Math.random() * (layer + 1) * 15 + 10; // Size variation based on layer
-        this.blur = Math.max(0, 1 - layer / 5);
+        this.size = Math.random() * (3*layer + 1) * 15 + 75;
+        this.blur = Math.max(0, 1 - layer / 2);
         this.emoji = emojis[layer];
-        this.rotation = Math.random() * Math.PI * 2; // Random rotation
+        this.rotation = Math.random() * Math.PI * 2;
     }
 
-    // Initialize particles
     for (let layer = 0; layer < layers.length; layer++) {
-        for (let i = 0; i < 25; i++) { // 50 particles per layer
+        for (let i = 0; i < 13; i++) {
             layers[layer].push(new Particle(layer));
         }
     }
 
-    // Draw function
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         layers.forEach(layer => {
             layer.forEach(particle => {
                 ctx.save();
-                ctx.translate(particle.x, particle.y); // Move to the particle's position
-                ctx.rotate(particle.rotation); // Apply rotation
+                ctx.translate(particle.x, particle.y);
+                ctx.rotate(particle.rotation);
                 ctx.filter = `blur(${particle.blur}px)`;
                 ctx.textBaseline = 'middle';
-                ctx.font = `${particle.size}px Arial`; // Set font size based on particle size
-                ctx.fillText(particle.emoji, -particle.size / 2, particle.size / 2); // Draw the emoji centered
+                ctx.font = `${particle.size * 0.5}px Arial`;
+                ctx.fillText(particle.emoji, -particle.size / 2, particle.size / 2);
                 ctx.restore();
             });
         });
     }
 
-    // Parallax effect based on mouse move
     document.addEventListener('mousemove', (event) => {
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
 
-        // Normalize mouse position to -1 to 1
         const deltaX = (event.clientX - centerX) / centerX;
         const deltaY = (event.clientY - centerY) / centerY;
 
         layers.forEach((layer, index) => {
-            // Inverse the index for the movement factor so that the top layer moves the most
             const movementFactor = (index + 1) * 5; // Adjust this factor to control sensitivity
 
             layer.forEach(particle => {
-                // Calculate positions based on original positions plus mouse-induced movement
                 particle.x = particle.originalX + deltaX * movementFactor;
                 particle.y = particle.originalY + deltaY * movementFactor;
             });
         });
 
-        draw(); // Redraw with the updated positions
+        draw();
     });
 
-    // Initial draw
     draw();
 
 </script>
